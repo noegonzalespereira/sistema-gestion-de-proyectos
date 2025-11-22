@@ -1,0 +1,60 @@
+@import "bootstrap/scss/bootstrap";
+
+/* 🎨 Personalización del navbar */
+.navbar-dark .nav-link {
+  color: #e2e8f0 !important;
+  transition: 0.3s;
+}
+
+.navbar-dark .nav-link:hover {
+  color: #38b2ac !important;
+}
+
+.navbar-dark .nav-link.active {
+  color: #90cdf4 !important;
+  font-weight: bold;
+}
+
+.btn-outline-light {
+  border-color: #38b2ac;
+  color: #38b2ac;
+}
+
+.btn-outline-light:hover {
+  background-color: #38b2ac;
+  color: #1a202c;
+}
+.admin-sidebar {
+  min-height: 100vh;          /* altura pantalla */
+  position: sticky;
+  top: 0;
+  background: #0b2a5c;        /* azul oscuro */
+  color: #e6eefc;
+}
+
+.admin-sidebar .nav-link {
+  color: #c9d6ee;
+  padding: .55rem .9rem;
+  border-radius: .5rem;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  transition: background .2s ease, color .2s ease, transform .08s ease;
+}
+
+.admin-sidebar .nav-link:hover {
+  background: rgba(255,255,255,.08);
+  color: #fff;
+}
+
+.admin-sidebar .nav-link.active {
+  background: linear-gradient(90deg, #1e429f, #2563eb);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+
+.admin-sidebar small.text-muted {
+  color: #9fb3d9 !important;
+  letter-spacing: .06em;
+}
