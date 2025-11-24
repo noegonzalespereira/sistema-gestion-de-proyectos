@@ -11,10 +11,16 @@ class AvanceController extends Controller
     public function index(AsignacionProyecto $asignacion) {
         $avances = Avance::with('usuario')
             ->where('id_asignacion', $asignacion->id_asignacion)
-            ->latest()->get();
+            ->orderBy('id_modulo')
+            ->orderBy('created_at')
+            ->get();
+        $avancesPorModulo = $avances->groupBy('id_modulo');
 
         // crea una vista simple o devuélvelos como quieras
-        return view('docente.partials.avances', compact('asignacion','avances'));
+        return view('docente.partials.avances', [
+            'asignacion'       => $asignacion,
+            'avancesPorModulo' => $avancesPorModulo,
+        ]);
     }
 
     public function store(Request $request, AsignacionProyecto $asignacion) {

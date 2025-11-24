@@ -28,7 +28,7 @@ class AsignacionProyecto extends Model
     public function seguimientos(){ return $this->hasMany(Seguimiento::class,'id_asignacion','id_asignacion'); }
     public function modulos() {
     return $this->hasMany(\App\Models\Modulo::class, 'id_asignacion', 'id_asignacion')
-                ->latest();
+                ->orderBy('id_modulo', 'asc');
 }
 public function avances() {
     return $this->hasMany(\App\Models\Avance::class, 'id_asignacion', 'id_asignacion')

@@ -19,7 +19,6 @@ class EstudianteController extends Controller
         $estudiante = Estudiante::where('id_usuario', $usuario->id)->first();
 
         if (!$estudiante) {
-            // el blade mostrará mensaje "sin asignación"
             return view('estudiante.proyecto')->with('asignacion', null);
         }
 
@@ -29,7 +28,7 @@ class EstudianteController extends Controller
                 'carrera',
                 'tutor.usuario',
                 'modulos.materiales',
-                'modulos.avances.usuario',
+                'modulos.avances.correcciones.tutor.usuario',
                 'correcciones.tutor.usuario',
             ])
             ->where('id_estudiante', $estudiante->id_estudiante)
@@ -41,21 +40,34 @@ class EstudianteController extends Controller
     // Subir avance a un módulo concreto
     public function subirAvance(Request $request, Modulo $modulo)
     {
-        // 1) validar que el módulo realmente pertenece a la asignación del estudiante
         $usuario = auth()->user();
         $est = Estudiante::where('id_usuario', $usuario->id)->firstOrFail();
         $asig = $modulo->asignacion;
 
+        // Validar que el módulo pertenece a la asignación del estudiante
         abort_unless($asig && $asig->id_estudiante === $est->id_estudiante, 403);
 
-        // 2) validar datos
+        if ($modulo->estado === 'aprobado') {
+            abort(403, 'Este módulo ya está aprobado, no puedes subir más avances.');
+        }
+        $modAnteriorPendiente = $asig->modulos()
+            ->where('id_modulo', '<', $modulo->id_modulo)
+            ->where('estado', '!=', 'aprobado')
+            ->exists();
+
+        if ($modAnteriorPendiente) {
+            // 403 para que no puedan saltarse el flujo desde Postman etc.
+            abort(403, 'Debes tener aprobado el módulo anterior antes de subir avances a este módulo.');
+        }
+
+        // Validar datos del avance
         $data = $request->validate([
             'titulo'      => 'required|string|max:200',
             'descripcion' => 'nullable|string',
             'archivo'     => 'nullable|file|mimes:pdf,doc,docx,zip,rar|max:5120',
         ]);
 
-        // 3) crear avance ligado a la asignación y al módulo
+        // Crear avance ligado a la asignación y al módulo
         $avance = new Avance([
             'id_asignacion' => $asig->id_asignacion,
             'id_modulo'     => $modulo->id_modulo,

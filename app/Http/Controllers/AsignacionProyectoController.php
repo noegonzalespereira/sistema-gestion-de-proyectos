@@ -9,6 +9,8 @@ use App\Models\Tutor;
 use App\Models\Estudiante;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Http;
+
 
 class AsignacionProyectoController extends Controller
 {
@@ -66,7 +68,7 @@ class AsignacionProyectoController extends Controller
             }
         }
 
-        AsignacionProyecto::create([
+        $asignacion = AsignacionProyecto::create([
             'id_usuario'       => auth()->id(),
             'titulo_proyecto'  => $request->titulo_proyecto,
             'id_tutor'         => $request->id_tutor,
@@ -77,7 +79,44 @@ class AsignacionProyectoController extends Controller
             'estado'           => $request->estado ?: 'Observado',
             'observacion'      => $request->observacion,
         ]);
-                 
+    
+        $asignacion->load(['usuario', 'tutor.usuario', 'estudiante.usuario', 'carrera', 'programa']);
+        // 3) Preparar datos para n8n
+        $payload = [
+            'id_asignacion'   => $asignacion->id_asignacion,
+            'titulo_proyecto' => $asignacion->titulo_proyecto,
+            'estado'          => $asignacion->estado,
+            'fecha_asignacion'=> optional($asignacion->fecha_asignacion)->toDateString(),
+
+            'carrera'  => optional($asignacion->carrera)->nombre,
+            'programa' => optional($asignacion->programa)->nombre,
+
+            'estudiante' => [
+                'id'     => optional($asignacion->estudiante)->id_estudiante,
+                'nombre' => optional(optional($asignacion->estudiante)->usuario)->name ?? null,
+                'email'  => optional(optional($asignacion->estudiante)->usuario)->email ?? null,
+            ],
+            'tutor' => [
+                'id'     => optional($asignacion->tutor)->id_tutor,
+                'nombre' => optional(optional($asignacion->tutor)->usuario)->name ?? null,
+                'email'  => optional(optional($asignacion->tutor)->usuario)->email ?? null,
+            ],
+            'usuario_asigna' => [
+                'id'     => optional($asignacion->usuario)->id,
+                'nombre' => optional($asignacion->usuario)->name,
+                'email'  => optional($asignacion->usuario)->email,
+            ],
+            'observacion'    => $asignacion->observacion,
+            'link_plataforma'=> route('asignaciones.index'), // o una ruta show si la tienes
+        ];
+        // 4) URL del Webhook de n8n (Production URL)
+    $n8nUrl = env('N8N_WEBHOOK_ASIGNACION', 'http://localhost:5678/webhook/asignacion-creada');
+    try {
+        Http::post($n8nUrl, $payload);
+    } catch (\Throwable $e) {
+        // No romper la app si falla n8n
+        \Log::warning('Error enviando asignación a n8n: '.$e->getMessage());
+    }
 
         return back()->with('success', 'Asignación creada correctamente.');
     }
@@ -123,6 +162,47 @@ class AsignacionProyectoController extends Controller
 
     public function destroy(AsignacionProyecto $asignacion)
     {
+    $asignacion->load(['usuario', 'tutor.usuario', 'estudiante.usuario', 'carrera', 'programa']);
+
+        $payload = [
+            'id_asignacion'   => $asignacion->id_asignacion,
+            'titulo_proyecto' => $asignacion->titulo_proyecto,
+            'estado'          => 'Eliminado',
+            'fecha_asignacion'=> optional($asignacion->fecha_asignacion)->toDateString(),
+            'fecha_eliminacion' => now()->toDateTimeString(),
+
+            'carrera'  => optional($asignacion->carrera)->nombre,
+            'programa' => optional($asignacion->programa)->nombre,
+
+            'estudiante' => [
+                'id'     => optional($asignacion->estudiante)->id_estudiante,
+                'nombre' => optional(optional($asignacion->estudiante)->usuario)->name,
+                'email'  => optional(optional($asignacion->estudiante)->usuario)->email,
+            ],
+            'tutor' => [
+                'id'     => optional($asignacion->tutor)->id_tutor,
+                'nombre' => optional(optional($asignacion->tutor)->usuario)->name,
+                'email'  => optional(optional($asignacion->tutor)->usuario)->email,
+            ],
+            'usuario_asigna' => [
+                'id'     => optional($asignacion->usuario)->id,
+                'nombre' => optional($asignacion->usuario)->name,
+                'email'  => optional($asignacion->usuario)->email,
+            ],
+            'observacion'     => $asignacion->observacion,
+            'link_plataforma' => route('asignaciones.index'),
+
+            'motivo'          => 'Asignación eliminada desde el sistema',
+        ];
+
+        $n8nUrl = env('N8N_WEBHOOK_ASIGNACION_ELIMINADA', 'http://localhost:5678/webhook/asignacion-eliminada');
+
+        try {
+            Http::post($n8nUrl, $payload);
+        } catch (\Throwable $e) {
+            \Log::error('Error enviando asignación eliminada a n8n: '.$e->getMessage());
+        }
+
         $asignacion->delete();
         return back()->with('success','Asignación eliminada.');
     }

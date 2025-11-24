@@ -28,6 +28,7 @@ class DocenteController extends Controller
                 'programa',
                 'modulos.materiales',  
                 'modulos.correcciones.tutor.usuario',
+                'modulos.avances.correcciones.tutor.usuario',
             ])
             ->where('id_tutor', $tutor->id_tutor)
             ->orderByDesc('fecha_asignacion')

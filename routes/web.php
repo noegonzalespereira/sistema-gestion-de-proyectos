@@ -193,12 +193,16 @@ Route::prefix('docente')->middleware(['auth',RoleMiddleware::class . ':Docente']
 
     Route::get('/asignaciones/{asignacion}/avances', [\App\Http\Controllers\Docente\AvanceController::class,'index'])
         ->name('docente.avances.index');
+    
 
     Route::post('/asignaciones/{asignacion}/avances', [\App\Http\Controllers\Docente\AvanceController::class,'store'])
         ->name('docente.avances.store');
 
-    Route::post('/asignaciones/{asignacion}/correcciones', [\App\Http\Controllers\Docente\CorreccionController::class,'store'])
-        ->name('docente.correcciones.store');
+    
+    Route::post('/avances/{avance}/correcciones', 
+        [\App\Http\Controllers\Docente\CorreccionController::class, 'storeForAvance']
+    )->name('docente.avances.correcciones.store');
+
 });
 
 /*

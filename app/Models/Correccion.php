@@ -13,9 +13,11 @@ class Correccion extends Model
 
     protected $fillable = [
         'id_asignacion',
-        'id_modulo',      // 👈 nuevo
+        'id_modulo',   
+        'id_avance',   
         'id_tutor',
         'comentario',
+        'nota',    
         'fecha_limite',
         'path',
     ];

@@ -11,7 +11,6 @@ class Modulo extends Model
     protected $table = 'modulos';
     protected $primaryKey = 'id_modulo';
 
-    // OJO: ahora cuelga de la asignación, no del proyecto
     protected $fillable = [
         'id_asignacion',
         'titulo',

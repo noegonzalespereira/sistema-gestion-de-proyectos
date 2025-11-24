@@ -35,7 +35,13 @@ class Avance extends Model
 
     public function modulo()
     {
-        // módulo al que pertenece el avance
+       
         return $this->belongsTo(Modulo::class, 'id_modulo', 'id_modulo');
     }
-}
+    public function correcciones()
+    {
+        return $this->hasMany(Correccion::class, 'id_avance', 'id_avance')
+                    ->with('tutor.usuario')
+                    ->latest();
+    }
+}   
