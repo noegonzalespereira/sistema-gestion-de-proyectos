@@ -7,6 +7,7 @@ use App\Models\Correccion;
 use App\Models\Tutor;
 use App\Models\Avance;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 
 class CorreccionController extends Controller
 {
@@ -61,13 +62,59 @@ class CorreccionController extends Controller
             'comentario'    => $request->comentario,
             'nota'          => $request->nota,
             'fecha_limite'  => $request->fecha_limite,
+            'estado_modulo' => $request->estado_modulo ?? null,
         ]);
 
         if ($request->hasFile('archivo')) {
             $corr->path = $request->file('archivo')->store('correcciones', 'public');
         }
-
         $corr->save();
+
+        try {
+            $avance->load([
+                'asignacion.estudiante.usuario',
+                'asignacion.tutor.usuario',
+                'modulo',
+            ]);
+
+            $modulo = $avance->modulo;
+            $asig   = $avance->asignacion;
+
+            $payload = [
+                'evento' => 'correccion_registrada',
+                'modulo' => [
+                    'id_modulo'    => $modulo->id_modulo ?? null,
+                    'titulo'       => $modulo->titulo ?? null,
+                    'descripcion'  => $modulo->descripcion ?? null,
+                    'fecha_limite' => optional($modulo->fecha_limite)->toDateString(),
+                ],
+                'asignacion' => [
+                    'id_asignacion'   => $asig->id_asignacion ?? null,
+                'correccion' => [
+                    'id_correccion' => $corr->id_correccion,
+                    'comentario'    => $corr->comentario,
+                    'nota'          => $corr->nota,
+                    // si luego quieres manejar estados Observado/Aprobado por corrección, se agrega aquí
+                ],
+                'estudiante' => [
+                    'id'     => $asig->estudiante->id_estudiante ?? null,
+                    'nombre' => optional($asig->estudiante->usuario)->name ?? null,
+                    'email'  => optional($asig->estudiante->usuario)->email ?? null,
+                ],
+                'tutor' => [
+                    'id'     => $asig->tutor->id_tutor ?? null,
+                    'nombre' => optional($asig->tutor->usuario)->name ?? null,
+                    'email'  => optional($asig->tutor->usuario)->email ?? null,
+                ],
+                'link_plataforma' => route('estudiante.proyecto'),
+            ];
+
+            Http::post(env('N8N_WEBHOOK_MODULO_EVENTOS'), $payload);
+        } catch (\Throwable $e) {
+            \Log::warning('Error enviando correccion_registrada a n8n: '.$e->getMessage());
+        }
+
+
          return redirect()
             ->route('docente.asignaciones')
             ->with('success', 'Corrección registrada para este avance.');

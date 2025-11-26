@@ -7,7 +7,7 @@ use App\Models\AsignacionProyecto;
 use App\Models\Estudiante;
 use App\Models\Modulo;
 use App\Models\Avance;
-
+use Illuminate\Support\Facades\Http;
 class EstudianteController extends Controller
 {
     // Pantalla principal "Mi Proyecto"
@@ -37,7 +37,6 @@ class EstudianteController extends Controller
         return view('estudiante.proyecto', compact('asignacion'));
     }
 
-    // Subir avance a un módulo concreto
     public function subirAvance(Request $request, Modulo $modulo)
     {
         $usuario = auth()->user();
@@ -81,6 +80,44 @@ class EstudianteController extends Controller
         }
 
         $avance->save();
+        try {
+            $asig->load(['estudiante.usuario', 'tutor.usuario']);
+
+            $payload = [
+                'evento' => 'avance_subido',
+                'modulo' => [
+                    'id_modulo'    => $modulo->id_modulo,
+                    'titulo'       => $modulo->titulo,
+                    'descripcion'  => $modulo->descripcion,
+                    'fecha_limite' => optional($modulo->fecha_limite)->toDateString(),
+                ],
+                'asignacion' => [
+                    'id_asignacion'   => $asig->id_asignacion,
+                    'titulo_proyecto' => $asig->titulo_proyecto,
+                ],
+                'avance' => [
+                    'id_avance'   => $avance->id_avance,
+                    'titulo'      => $avance->titulo,
+                    'descripcion' => $avance->descripcion,
+                    'fecha_envio' => $avance->created_at->toDateTimeString(),
+                ],
+                'estudiante' => [
+                    'id'     => $est->id_estudiante,
+                    'nombre' => optional($asig->estudiante->usuario)->name,
+                    'email'  => optional($asig->estudiante->usuario)->email,
+                ],
+                'tutor' => [
+                    'id'     => $asig->tutor->id_tutor ?? null,
+                    'nombre' => optional($asig->tutor->usuario)->name ?? null,
+                    'email'  => optional($asig->tutor->usuario)->email ?? null,
+                ],
+                'link_plataforma' => route('docente.asignaciones'), // para que el tutor vaya a revisar
+            ];
+
+            Http::post(env('N8N_WEBHOOK_MODULO_EVENTOS'), $payload);
+        } catch (\Throwable $e) {
+            \Log::warning('Error enviando avance_subido a n8n: '.$e->getMessage());
+        }
 
         return back()->with('success', 'Tu avance fue enviado correctamente.');
     }

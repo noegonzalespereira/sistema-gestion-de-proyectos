@@ -5,16 +5,54 @@ use App\Http\Controllers\Controller;
 use App\Models\Modulo;
 use App\Models\ModuloMaterial;
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Facades\Http;
+use App\Models\AsignacionProyecto;
 class ModuloController extends Controller
 {
     public function store(Request $request, $asignacionId) {
         $data = $request->validate([
             'titulo' => 'required|string|max:200',
             'descripcion' => 'nullable|string',
+            'fecha_limite' => 'nullable|date',
         ]);
         $data['id_asignacion'] = $asignacionId;
-        Modulo::create($data);
+        $modulo=Modulo::create($data);
+        try {
+            // cargamos la asignación con estudiante y tutor
+            $asignacion = $modulo->asignacion()
+                ->with(['estudiante.usuario', 'tutor.usuario'])
+                ->first();
+
+            $payload = [
+                'evento' => 'modulo_creado',
+                'modulo' => [
+                    'id_modulo'    => $modulo->id_modulo,
+                    'titulo'       => $modulo->titulo,
+                    'descripcion'  => $modulo->descripcion,
+                    'fecha_limite' => optional($modulo->fecha_limite)->toDateString(),
+                ],
+                'asignacion' => [
+                    'id_asignacion'   => $asignacion->id_asignacion ?? null,
+                    'titulo_proyecto' => $asignacion->titulo_proyecto ?? null,
+                ],
+                'estudiante' => [
+                    'id'     => optional($asignacion->estudiante)->id_estudiante ?? null,
+                    'nombre' => optional(optional($asignacion->estudiante)->usuario)->name ?? null,
+                    'email'  => optional(optional($asignacion->estudiante)->usuario)->email ?? null,
+                ],
+                'tutor' => [
+                    'id'     => optional($asignacion->tutor)->id_tutor ?? null,
+                    'nombre' => optional(optional($asignacion->tutor)->usuario)->name ?? null,
+                    'email'  => optional(optional($asignacion->tutor)->usuario)->email ?? null,
+                ],
+                'link_plataforma' => route('estudiante.proyecto'), // o ruta específica al módulo
+            ];
+
+            Http::post(env('N8N_WEBHOOK_MODULO_EVENTOS'), $payload);
+        } catch (\Throwable $e) {
+            \Log::warning('Error enviando modulo_creado a n8n: '.$e->getMessage());
+        }
+
         return back()->with('success','Módulo creado.');
     }
 
