@@ -9,7 +9,7 @@ class Correccion extends Model
     use HasFactory;
 
     protected $table = 'correcciones';
-    protected $primaryKey = 'id_correccion'; // o el que tengas
+    protected $primaryKey = 'id_correccion'; 
 
     protected $fillable = [
         'id_asignacion',

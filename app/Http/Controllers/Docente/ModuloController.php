@@ -7,6 +7,8 @@ use App\Models\ModuloMaterial;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use App\Models\AsignacionProyecto;
+use Carbon\Carbon;
+
 class ModuloController extends Controller
 {
     public function store(Request $request, $asignacionId) {
@@ -29,7 +31,9 @@ class ModuloController extends Controller
                     'id_modulo'    => $modulo->id_modulo,
                     'titulo'       => $modulo->titulo,
                     'descripcion'  => $modulo->descripcion,
-                    'fecha_limite' => optional($modulo->fecha_limite)->toDateString(),
+                    'fecha_limite' => $modulo && $modulo->fecha_limite
+                        ? Carbon::parse($modulo->fecha_limite)->toDateString()
+                        : null,
                 ],
                 'asignacion' => [
                     'id_asignacion'   => $asignacion->id_asignacion ?? null,

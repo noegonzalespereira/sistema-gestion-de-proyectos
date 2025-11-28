@@ -21,6 +21,9 @@ use App\Http\Controllers\Docente\ModuloController;
 use App\Http\Controllers\Docente\AvanceController;
 use App\Http\Controllers\Docente\CorreccionController;
 use App\Http\Controllers\Docente\CalificacionController;
+use App\Http\Controllers\Docente\AsignacionController;
+use App\Http\Controllers\Docente\FaltasController;
+
 /*
 |--------------------------------------------------------------------------
 | Página de inicio (landing)
@@ -176,9 +179,23 @@ Route::prefix('admin/proyectos')->middleware('auth',RoleMiddleware::class . ':Ad
 //     Route::get('/docente/asignaciones', [DocenteController::class, 'asignaciones'])->name('docente.asignaciones');
 // });
 Route::prefix('docente')->middleware(['auth',RoleMiddleware::class . ':Docente'])->group(function () {
-    Route::get('/asignaciones', [DocenteController::class, 'asignaciones'])
+     Route::get('/asignaciones', [AsignacionController::class, 'index'])
         ->name('docente.asignaciones');
+
     
+    Route::get('/asignaciones/{asignacion}', [AsignacionController::class, 'show'])
+        ->name('docente.asignaciones.show');
+    Route::get('/faltas', [FaltasController::class, 'index'])
+    ->name('docente.faltas.index');
+    Route::get('/asignaciones/{id}/faltas',
+        [FaltasController::class, 'porAsignacion']
+    )->name('docente.faltas.asignacion');
+
+
+    Route::post('/faltas/{falta}/rehabilitar', 
+    [FaltasController::class, 'rehabilitar'])
+    ->name('docente.faltas.rehabilitar');
+
     Route::post('/asignaciones/{asignacion}/modulos', [\App\Http\Controllers\Docente\ModuloController::class,'store'])
         ->name('docente.modulos.store');
 

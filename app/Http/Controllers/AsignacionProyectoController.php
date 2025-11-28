@@ -207,4 +207,5 @@ class AsignacionProyectoController extends Controller
         return back()->with('success','Asignación eliminada.');
     }
     
+    
 }

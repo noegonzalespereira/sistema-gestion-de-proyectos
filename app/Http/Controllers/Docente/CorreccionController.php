@@ -8,36 +8,38 @@ use App\Models\Tutor;
 use App\Models\Avance;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Carbon\Carbon;
 
 class CorreccionController extends Controller
 {
-    public function store(Request $request, AsignacionProyecto $asignacion) {
-        $request->validate([
-            'comentario'   => 'nullable|string',
-            'fecha_limite' => 'nullable|date',
-            'archivo'      => 'nullable|file|mimes:pdf,doc,docx,zip,rar|max:5120',
-            'id_modulo'    => 'nullable|integer|exists:modulos,id_modulo', 
-        ]);
+    // public function store(Request $request, AsignacionProyecto $asignacion) {
+    //     $request->validate([
+    //         'comentario'   => 'nullable|string',
+    //         'fecha_limite' => 'nullable|date',
+    //         'archivo'      => 'nullable|file|mimes:pdf,doc,docx,zip,rar|max:5120',
+    //         'id_modulo'    => 'nullable|integer|exists:modulos,id_modulo', 
+    //     ]);
 
-        $tutor = Tutor::where('id_usuario', auth()->id())->firstOrFail();
+    //     $tutor = Tutor::where('id_usuario', auth()->id())->firstOrFail();
 
-        $corr = new Correccion([
-            'id_asignacion' => $asignacion->id_asignacion,
-            'id_modulo'     => $request->id_modulo,
-            'id_tutor'      => $tutor->id_tutor,
-            'comentario'    => $request->comentario,
-            'fecha_limite'  => $request->fecha_limite,
-        ]);
+    //     $corr = new Correccion([
+    //         'id_asignacion' => $asignacion->id_asignacion,
+    //         'id_modulo'     => $request->id_modulo,
+    //         'id_tutor'      => $tutor->id_tutor,
+    //         'comentario'    => $request->comentario,
+    //         'fecha_limite'  => $request->fecha_limite,
+    //     ]);
 
-        if ($request->hasFile('archivo')) {
-            $corr->path = $request->file('archivo')->store('correcciones','public');
-        }
-        $corr->save();
+    //     if ($request->hasFile('archivo')) {
+    //         $corr->path = $request->file('archivo')->store('correcciones','public');
+    //     }
+    //     $corr->save();
 
-        return redirect()
-            ->route('docente.asignaciones')
-            ->with('success','Corrección enviada al estudiante.');
-    }
+    //     return redirect()
+    //         ->route('docente.asignaciones')
+    //         ->with('success','Corrección enviada al estudiante.');
+    // }
+
     public function storeForAvance(Request $request, Avance $avance)
     {
         $request->validate([
@@ -62,14 +64,17 @@ class CorreccionController extends Controller
             'comentario'    => $request->comentario,
             'nota'          => $request->nota,
             'fecha_limite'  => $request->fecha_limite,
-            'estado_modulo' => $request->estado_modulo ?? null,
+            // 'estado_modulo' => $request->estado_modulo ?? null,
         ]);
 
         if ($request->hasFile('archivo')) {
             $corr->path = $request->file('archivo')->store('correcciones', 'public');
         }
         $corr->save();
-
+        if ($request->filled('fecha_limite') && $avance->modulo) {
+            $avance->modulo->fecha_limite = $request->fecha_limite;
+            $avance->modulo->save();
+        }
         try {
             $avance->load([
                 'asignacion.estudiante.usuario',
@@ -82,30 +87,40 @@ class CorreccionController extends Controller
 
             $payload = [
                 'evento' => 'correccion_registrada',
+
                 'modulo' => [
-                    'id_modulo'    => $modulo->id_modulo ?? null,
-                    'titulo'       => $modulo->titulo ?? null,
-                    'descripcion'  => $modulo->descripcion ?? null,
-                    'fecha_limite' => optional($modulo->fecha_limite)->toDateString(),
+                    'id_modulo'    => $modulo?->id_modulo,
+                    'titulo'       => $modulo?->titulo,
+                    'descripcion'  => $modulo?->descripcion,
+                    'fecha_limite' => $modulo && $modulo->fecha_limite
+                        ? Carbon::parse($modulo->fecha_limite)->toDateString()
+                        : null,
                 ],
+
                 'asignacion' => [
-                    'id_asignacion'   => $asig->id_asignacion ?? null,
+                    'id_asignacion' => $asig?->id_asignacion,
+                    'titulo_proyecto'        => $asig?->titulo_proyecto,
+                ],
+
                 'correccion' => [
                     'id_correccion' => $corr->id_correccion,
                     'comentario'    => $corr->comentario,
                     'nota'          => $corr->nota,
-                    // si luego quieres manejar estados Observado/Aprobado por corrección, se agrega aquí
+                    'fecha_limite'  => $corr->fecha_limite,
                 ],
+
                 'estudiante' => [
                     'id'     => $asig->estudiante->id_estudiante ?? null,
-                    'nombre' => optional($asig->estudiante->usuario)->name ?? null,
-                    'email'  => optional($asig->estudiante->usuario)->email ?? null,
+                    'nombre' => $asig->estudiante->usuario->name ?? null,
+                    'email'  => $asig->estudiante->usuario->email ?? null,
                 ],
+
                 'tutor' => [
                     'id'     => $asig->tutor->id_tutor ?? null,
-                    'nombre' => optional($asig->tutor->usuario)->name ?? null,
-                    'email'  => optional($asig->tutor->usuario)->email ?? null,
+                    'nombre' => $asig->tutor->usuario->name ?? null,
+                    'email'  => $asig->tutor->usuario->email ?? null,
                 ],
+
                 'link_plataforma' => route('estudiante.proyecto'),
             ];
 
@@ -114,11 +129,8 @@ class CorreccionController extends Controller
             \Log::warning('Error enviando correccion_registrada a n8n: '.$e->getMessage());
         }
 
-
-         return redirect()
+        return redirect()
             ->route('docente.asignaciones')
             ->with('success', 'Corrección registrada para este avance.');
     }
-
-
 }

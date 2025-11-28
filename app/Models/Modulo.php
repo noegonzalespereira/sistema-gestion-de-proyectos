@@ -19,6 +19,10 @@ class Modulo extends Model
         'calificacion',
         'fecha_limite',
     ];
+    protected $casts = [
+    'fecha_limite' => 'date',
+];
+
 
     public function asignacion()
     {

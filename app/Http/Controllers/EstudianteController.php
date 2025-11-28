@@ -8,6 +8,9 @@ use App\Models\Estudiante;
 use App\Models\Modulo;
 use App\Models\Avance;
 use Illuminate\Support\Facades\Http;
+use App\Models\FaltasModulo;
+use Carbon\Carbon;
+
 class EstudianteController extends Controller
 {
     // Pantalla principal "Mi Proyecto"
@@ -37,36 +40,74 @@ class EstudianteController extends Controller
         return view('estudiante.proyecto', compact('asignacion'));
     }
 
+
+
+    // SUBIR AVANCE -------------------------------------------------------
     public function subirAvance(Request $request, Modulo $modulo)
     {
         $usuario = auth()->user();
         $est = Estudiante::where('id_usuario', $usuario->id)->firstOrFail();
         $asig = $modulo->asignacion;
 
-        // Validar que el módulo pertenece a la asignación del estudiante
+        // VALIDAR QUE EL MÓDULO PERTENECE AL ESTUDIANTE
         abort_unless($asig && $asig->id_estudiante === $est->id_estudiante, 403);
 
+        // NO PERMITIR SUBIR SI EL MÓDULO ESTÁ APROBADO
         if ($modulo->estado === 'aprobado') {
             abort(403, 'Este módulo ya está aprobado, no puedes subir más avances.');
         }
+
+        // VALIDAR MÓDULO ANTERIOR APROBADO
         $modAnteriorPendiente = $asig->modulos()
             ->where('id_modulo', '<', $modulo->id_modulo)
             ->where('estado', '!=', 'aprobado')
             ->exists();
 
         if ($modAnteriorPendiente) {
-            // 403 para que no puedan saltarse el flujo desde Postman etc.
             abort(403, 'Debes tener aprobado el módulo anterior antes de subir avances a este módulo.');
         }
 
-        // Validar datos del avance
+        // --------------------------------------------------------------------
+        // NUEVO: BLOQUEO POR FALTA
+        // --------------------------------------------------------------------
+        $falta = FaltasModulo::where('id_modulo', $modulo->id_modulo)
+            ->where('id_estudiante', $est->id_estudiante)
+            ->where('bloqueado', true)
+            ->first();
+
+        if ($falta) {
+            abort(403, 'Este módulo está bloqueado porque no entregaste en la fecha límite. Debes contactar a tu docente.');
+        }
+
+        // --------------------------------------------------------------------
+        // NUEVO: REGISTRAR FALTA SI YA PASÓ LA FECHA LÍMITE
+        // --------------------------------------------------------------------
+        if ($modulo->fecha_limite && Carbon::now()->gt(Carbon::parse($modulo->fecha_limite))) {
+
+            FaltasModulo::firstOrCreate(
+                [
+                    'id_modulo'     => $modulo->id_modulo,
+                    'id_asignacion' => $asig->id_asignacion,
+                    'id_estudiante' => $est->id_estudiante,
+                ],
+                [
+                    'fecha_limite_original' => $modulo->fecha_limite,
+                    'motivo'                => 'No entregó avance antes de la fecha límite',
+                    'bloqueado'             => true,
+                ]
+            );
+
+            abort(403, 'Ya pasó la fecha límite. Este módulo ha sido bloqueado.');
+        }
+
+        // VALIDAR DATOS
         $data = $request->validate([
             'titulo'      => 'required|string|max:200',
             'descripcion' => 'nullable|string',
             'archivo'     => 'nullable|file|mimes:pdf,doc,docx,zip,rar|max:5120',
         ]);
 
-        // Crear avance ligado a la asignación y al módulo
+        // GUARDAR AVANCE
         $avance = new Avance([
             'id_asignacion' => $asig->id_asignacion,
             'id_modulo'     => $modulo->id_modulo,
@@ -80,6 +121,8 @@ class EstudianteController extends Controller
         }
 
         $avance->save();
+
+        // ENVIAR A N8N
         try {
             $asig->load(['estudiante.usuario', 'tutor.usuario']);
 
@@ -111,10 +154,11 @@ class EstudianteController extends Controller
                     'nombre' => optional($asig->tutor->usuario)->name ?? null,
                     'email'  => optional($asig->tutor->usuario)->email ?? null,
                 ],
-                'link_plataforma' => route('docente.asignaciones'), // para que el tutor vaya a revisar
+                'link_plataforma' => route('docente.asignaciones'),
             ];
 
             Http::post(env('N8N_WEBHOOK_MODULO_EVENTOS'), $payload);
+
         } catch (\Throwable $e) {
             \Log::warning('Error enviando avance_subido a n8n: '.$e->getMessage());
         }
@@ -122,10 +166,11 @@ class EstudianteController extends Controller
         return back()->with('success', 'Tu avance fue enviado correctamente.');
     }
 
-    // Actualizar un avance (si permites edición)
+
+
+    // Actualizar un avance
     public function actualizarAvance(Request $request, Avance $avance)
     {
-        // solo el dueño puede editar
         abort_unless($avance->id_usuario === auth()->id(), 403);
 
         $data = $request->validate([
@@ -145,6 +190,8 @@ class EstudianteController extends Controller
 
         return back()->with('success', 'Avance actualizado correctamente.');
     }
+
+
 
     // Eliminar avance
     public function eliminarAvance(Avance $avance)
