@@ -79,6 +79,31 @@ class AsignacionProyectoController extends Controller
             'estado'           => $request->estado ?: 'Observado',
             'observacion'      => $request->observacion,
         ]);
+        // 🔥 COPIAR MÓDULOS BASE DEL TUTOR AL NUEVO ESTUDIANTE
+if ($asignacion->id_tutor) {
+
+    // 1) Obtener todos los módulos base del tutor.
+    // Un módulo base = no tiene fecha límite.
+    $modulosBase = \App\Models\Modulo::whereIn(
+        'id_asignacion',
+        \App\Models\AsignacionProyecto::where('id_tutor', $asignacion->id_tutor)->pluck('id_asignacion')
+    )
+    ->whereNull('fecha_limite')     // módulos base
+    ->orderBy('id_modulo')
+    ->get();
+
+    // 2) Replicar módulos base en esta nueva asignación
+    foreach ($modulosBase as $base) {
+        \App\Models\Modulo::create([
+            'id_asignacion' => $asignacion->id_asignacion,
+            'titulo'        => $base->titulo,
+            'descripcion'   => $base->descripcion,
+            'fecha_limite'  => null,           // sigue siendo base
+            'estado'        => 'pendiente',
+        ]);
+    }
+}
+
     
         $asignacion->load(['usuario', 'tutor.usuario', 'estudiante.usuario', 'carrera', 'programa']);
         // 3) Preparar datos para n8n

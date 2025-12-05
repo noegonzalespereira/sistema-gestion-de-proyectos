@@ -33,11 +33,19 @@ class DocenteController extends Controller
             ->where('id_tutor', $tutor->id_tutor)
             ->orderByDesc('fecha_asignacion')
             ->paginate(10);
-            
-
         $proyectosRevision  = collect();
-        $proyectosAprobados = collect();
+        $proyectosAprobados = collect();  
 
-        return view('docente.asignaciones', compact('asignaciones','proyectosRevision','proyectosAprobados'));
+        $modulosBase = \App\Models\Modulo::whereIn(
+            'id_asignacion',
+            \App\Models\AsignacionProyecto::where('id_tutor', $tutor->id_tutor)->pluck('id_asignacion')
+            )
+            ->whereNull('fecha_limite')
+            ->with('materiales')
+            ->orderBy('id_modulo')
+            ->get();
+        
+
+        return view('docente.asignaciones', compact('asignaciones','proyectosRevision','proyectosAprobados','modulosBase'));
     }
 }

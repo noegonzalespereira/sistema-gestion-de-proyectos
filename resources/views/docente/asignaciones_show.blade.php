@@ -234,7 +234,7 @@
       </div>
     </div>
 
-    {{-- ACCIONES --}}
+    {{-- ACCIONES
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
       <div>
         <span class="small-label d-block">Ruta de módulos</span>
@@ -250,7 +250,7 @@
     </div>
 
     {{-- PANEL CREAR MÓDULO --}}
-    <div id="panelCrearModulo" class="collapse mb-4">
+    {{-- <div id="panelCrearModulo" class="collapse mb-4"> 
       <div class="card border-0 shadow-sm">
         <div class="card-body">
           <div class="small-label mb-2">Nuevo módulo</div>
@@ -280,7 +280,7 @@
           </form>
         </div>
       </div>
-    </div>
+    </div> --}
 
     {{-- LISTA DE MÓDULOS --}}
     @php
@@ -594,10 +594,11 @@
                   </div>
                   <div class="col-md-3">
                     <label class="form-label mb-0 small">Calificación</label>
-                    <input type="number" step="0.1" min="0" max="100"
-                           name="calificacion"
+                    <input type="number" 
+                           class="form-control form-control-sm"
                            value="{{ $mod->calificacion }}"
-                           class="form-control form-control-sm">
+                           readonly
+                           style="background:#e2e8f0; cursor:not-allowed;">
                   </div>
                   <div class="col-md-3">
                     <label class="form-label mb-0 small">Fecha límite</label>

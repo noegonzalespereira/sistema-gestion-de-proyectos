@@ -71,6 +71,33 @@ class CorreccionController extends Controller
             $corr->path = $request->file('archivo')->store('correcciones', 'public');
         }
         $corr->save();
+        // ============================================================
+// 🔥 RECALCULAR NOTA DEL MÓDULO AUTOMÁTICAMENTE
+// ============================================================
+$modulo = $avance->modulo;
+
+if ($modulo) {
+    $todasLasCorrecciones = $modulo->avances()
+        ->with('correcciones')
+        ->get()
+        ->flatMap(function ($av) {
+            return $av->correcciones;
+        });
+
+    $notas = $todasLasCorrecciones
+        ->whereNotNull('nota')
+        ->pluck('nota')
+        ->toArray();
+
+    $promedio = count($notas) > 0
+        ? round(array_sum($notas) / count($notas), 2)
+        : null;
+
+    $modulo->calificacion = $promedio;
+    $modulo->save();
+}
+
+
         if ($request->filled('fecha_limite') && $avance->modulo) {
             $avance->modulo->fecha_limite = $request->fecha_limite;
             $avance->modulo->save();
@@ -130,7 +157,7 @@ class CorreccionController extends Controller
         }
 
         return redirect()
-            ->route('docente.asignaciones')
+            ->route('docente.asignaciones.show', $avance->id_asignacion)
             ->with('success', 'Corrección registrada para este avance.');
     }
 }

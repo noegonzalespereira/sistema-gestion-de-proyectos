@@ -169,57 +169,104 @@ Route::prefix('admin/proyectos')->middleware('auth',RoleMiddleware::class . ':Ad
         
 });
 
-
 /*
 |--------------------------------------------------------------------------
 | Panel DOCENTE
 |--------------------------------------------------------------------------
 */
-// Route::middleware('auth')->group(function () {
-//     Route::get('/docente/asignaciones', [DocenteController::class, 'asignaciones'])->name('docente.asignaciones');
-// });
-Route::prefix('docente')->middleware(['auth',RoleMiddleware::class . ':Docente'])->group(function () {
-     Route::get('/asignaciones', [AsignacionController::class, 'index'])
+Route::prefix('docente')->middleware(['auth', RoleMiddleware::class . ':Docente'])->group(function () {
+
+    /* 📌 ASIGNACIONES DEL DOCENTE */
+    Route::get('/asignaciones', [AsignacionController::class, 'index'])
         ->name('docente.asignaciones');
 
-    
     Route::get('/asignaciones/{asignacion}', [AsignacionController::class, 'show'])
         ->name('docente.asignaciones.show');
+
+    /* 📌 FALTAS */
     Route::get('/faltas', [FaltasController::class, 'index'])
-    ->name('docente.faltas.index');
-    Route::get('/asignaciones/{id}/faltas',
-        [FaltasController::class, 'porAsignacion']
-    )->name('docente.faltas.asignacion');
+        ->name('docente.faltas.index');
+
+    Route::get('/asignaciones/{id}/faltas', [FaltasController::class, 'porAsignacion'])
+        ->name('docente.faltas.asignacion');
+
+    Route::post('/faltas/{falta}/rehabilitar', [FaltasController::class, 'rehabilitar'])
+        ->name('docente.faltas.rehabilitar');
 
 
-    Route::post('/faltas/{falta}/rehabilitar', 
-    [FaltasController::class, 'rehabilitar'])
-    ->name('docente.faltas.rehabilitar');
-
-    Route::post('/asignaciones/{asignacion}/modulos', [\App\Http\Controllers\Docente\ModuloController::class,'store'])
+    /* 📌 MÓDULOS INDIVIDUALES */
+    Route::post('/modulos', [ModuloController::class, 'store'])
         ->name('docente.modulos.store');
 
-    Route::delete('/modulos/{modulo}', [\App\Http\Controllers\Docente\ModuloController::class,'destroy'])
+    Route::put('/modulos/{modulo}', [ModuloController::class, 'update'])
+        ->name('docente.modulos.update');
+
+    Route::delete('/modulos/{modulo}', [ModuloController::class, 'destroy'])
         ->name('docente.modulos.destroy');
 
-    Route::post('/modulos/{modulo}/materiales', [\App\Http\Controllers\Docente\ModuloController::class,'storeMaterial'])
+
+    /* 📌 MATERIALES INDIVIDUALES */
+    Route::post('/modulos/{modulo}/materiales', [ModuloController::class, 'storeMaterial'])
         ->name('docente.modulos.materiales.store');
 
-    Route::post('/modulos/{modulo}/evaluar', [\App\Http\Controllers\Docente\ModuloController::class,'evaluar'])
-        ->name('docente.modulos.evaluar');
+    Route::put('/materiales/{material}', [ModuloController::class, 'updateMaterial'])
+        ->name('docente.modulos.materiales.update');
 
-    Route::get('/asignaciones/{asignacion}/avances', [\App\Http\Controllers\Docente\AvanceController::class,'index'])
+    Route::delete('/materiales/{material}', [ModuloController::class, 'destroyMaterial'])
+        ->name('docente.modulos.materiales.destroy');
+    Route::post('/modulos/{modulo}/evaluar', 
+    [\App\Http\Controllers\Docente\ModuloController::class,'evaluar']
+)->name('docente.modulos.evaluar');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | 🌍 MÓDULOS BASE — ACCIONES GLOBALES
+    |--------------------------------------------------------------------------
+    */
+
+    // EDITAR módulo base global
+    Route::put('/modulos/base/{id}', [ModuloController::class, 'updateBase'])
+    ->name('docente.modulos.update.base');
+
+
+    // ELIMINAR módulo base global
+    Route::delete('/modulos/base/{id}', [ModuloController::class, 'destroyBase'])
+        ->name('docente.modulos.base.destroy');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | 🌍 MATERIALES GLOBALES
+    |--------------------------------------------------------------------------
+    */
+
+    // AGREGAR material globalmente
+    Route::post('/modulos/{id}/material/global', [ModuloController::class, 'storeMaterialGlobal'])
+        ->name('docente.modulos.materiales.store.global');
+
+    // EDITAR material globalmente
+    Route::put('/modulos/material/{id}/global', [ModuloController::class, 'updateMaterialGlobal'])
+        ->name('docente.modulos.materiales.update.global');
+
+    // ELIMINAR material globalmente
+    Route::delete('/modulos/material/{id}/global', [ModuloController::class, 'destroyMaterialGlobal'])
+        ->name('docente.modulos.materiales.destroy.global');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | 📌 AVANCES
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/asignaciones/{asignacion}/avances', [AvanceController::class, 'index'])
         ->name('docente.avances.index');
-    
 
-    Route::post('/asignaciones/{asignacion}/avances', [\App\Http\Controllers\Docente\AvanceController::class,'store'])
+    Route::post('/asignaciones/{asignacion}/avances', [AvanceController::class, 'store'])
         ->name('docente.avances.store');
 
-    
-    Route::post('/avances/{avance}/correcciones', 
-        [\App\Http\Controllers\Docente\CorreccionController::class, 'storeForAvance']
-    )->name('docente.avances.correcciones.store');
-
+    Route::post('/avances/{avance}/correcciones', [CorreccionController::class, 'storeForAvance'])
+        ->name('docente.avances.correcciones.store');
 });
 
 /*
